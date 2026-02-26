@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 def install_dependencies():
     """Автоматическая установка зависимостей"""
-    logger.info("📦 Проверка зависимостей...")
+    logger.info("📦 Установка зависимостей...")
     try:
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "-q"],
+            [sys.executable, "-m", "pip", "install", "--upgrade", "--force-reinstall", "-r", "requirements.txt"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
@@ -37,16 +37,17 @@ async def run_bot(name, token, register_func):
     try:
         app = Application.builder().token(token).build()
         register_func(app)
-        logger.info(f"✅ {name} запущен")
         
-        # Запускаем polling без блокировки
+        # Запускаем polling
         await app.updater.start_polling(allowed_updates=app.updater.ALL_TYPES)
+        logger.info(f"✅ {name} запущен")
         
         # Держим бота запущенным
         while True:
             await asyncio.sleep(1)
     except Exception as e:
         logger.error(f"❌ Ошибка {name}: {e}")
+        raise
 
 
 async def main_async():
@@ -62,6 +63,7 @@ async def main_async():
     logger.info("📊 Инициализация базы данных...")
     try:
         init_db()
+        logger.info("✅ База данных готова")
     except Exception as e:
         logger.error(f"❌ Ошибка инициализации БД: {e}")
         return
@@ -74,7 +76,12 @@ async def main_async():
         run_bot("UID Info Bot", BOTS["uid_info"], uid_info.register_handlers),
     ]
     
-    await asyncio.gather(*tasks)
+    logger.info("🎉 Запуск всех ботов...")
+    try:
+        await asyncio.gather(*tasks)
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка: {e}")
+        raise
 
 
 def main():
