@@ -39,7 +39,8 @@ async def run_bot(name, token, register_func):
         app = Application.builder().token(token).build()
         register_func(app)
         
-        # Запускаем polling
+        # Инициализируем и запускаем polling
+        await app.initialize()
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         logger.info(f"✅ {name} запущен")
         
