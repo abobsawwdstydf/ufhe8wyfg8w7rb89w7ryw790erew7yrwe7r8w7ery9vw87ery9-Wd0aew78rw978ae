@@ -49,6 +49,8 @@ def install_dependencies():
 
 async def run_bot(name, token, register_func):
     """Запускает бота с перезапуском при ошибках сети"""
+    from telegram.error import Conflict
+    
     retry_count = 0
     max_retries = 10
     
@@ -69,6 +71,10 @@ async def run_bot(name, token, register_func):
             while True:
                 await asyncio.sleep(1)
                 
+        except Conflict as e:
+            logger.error(f"❌ {name}: конфликт (другой экземпляр запущен). Ждём 10 сек...")
+            retry_count += 1
+            await asyncio.sleep(10)
         except (TimedOut, NetworkError) as e:
             retry_count += 1
             logger.warning(f"⚠️ {name}: ошибка сети ({e}), перезапуск через 5 сек...")
