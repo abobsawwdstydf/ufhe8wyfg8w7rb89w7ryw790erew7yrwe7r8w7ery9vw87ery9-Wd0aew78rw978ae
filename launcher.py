@@ -6,6 +6,7 @@ import subprocess
 import sys
 import asyncio
 import logging
+from telegram import Update
 from telegram.ext import Application
 from database import init_db
 
@@ -39,7 +40,7 @@ async def run_bot(name, token, register_func):
         register_func(app)
         
         # Запускаем polling
-        await app.updater.start_polling(allowed_updates=app.updater.ALL_TYPES)
+        await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         logger.info(f"✅ {name} запущен")
         
         # Держим бота запущенным
