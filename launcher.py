@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 Лаунчер для запуска всех ботов
-Запускает всех ботов асинхронно
 """
 import subprocess
 import sys
 import asyncio
 import logging
+from telegram.ext import Application
 from database import init_db
 
 logging.basicConfig(
@@ -31,14 +31,20 @@ def install_dependencies():
         sys.exit(1)
 
 
-async def run_bot(name, bot_module):
-    """Запускает бота асинхронно"""
+async def run_bot(name, token, register_func):
+    """Запускает бота"""
     logger.info(f"🚀 Запуск {name}...")
     try:
-        app = bot_module.Application.builder().token(bot_module.BOTS[bot_module.BOT_NAME]).build()
-        bot_module.register_handlers(app)
+        app = Application.builder().token(token).build()
+        register_func(app)
         logger.info(f"✅ {name} запущен")
-        await app.run_polling(allowed_updates=bot_module.Update.ALL_TYPES)
+        
+        # Запускаем polling без блокировки
+        await app.updater.start_polling(allowed_updates=app.updater.ALL_TYPES)
+        
+        # Держим бота запущенным
+        while True:
+            await asyncio.sleep(1)
     except Exception as e:
         logger.error(f"❌ Ошибка {name}: {e}")
 
@@ -50,6 +56,7 @@ async def main_async():
     import SR_Link_ROBOT as link_shortener
     import support_bot as support
     import uid_info_robot as uid_info
+    from config import BOTS
     
     # Инициализируем базу данных
     logger.info("📊 Инициализация базы данных...")
@@ -61,20 +68,17 @@ async def main_async():
     
     # Запускаем всех ботов одновременно
     tasks = [
-        run_bot("Corporate Bot", corporate),
-        run_bot("Link Shortener Bot", link_shortener),
-        run_bot("Support Bot", support),
-        run_bot("UID Info Bot", uid_info),
+        run_bot("Corporate Bot", BOTS["corporate"], corporate.register_handlers),
+        run_bot("Link Shortener Bot", BOTS["link_shortener"], link_shortener.register_handlers),
+        run_bot("Support Bot", BOTS["support"], support.register_handlers),
+        run_bot("UID Info Bot", BOTS["uid_info"], uid_info.register_handlers),
     ]
     
     await asyncio.gather(*tasks)
 
 
 def main():
-    # Автоматическая установка зависимостей
     install_dependencies()
-    
-    # Запускаем асинхронный цикл
     asyncio.run(main_async())
 
 
