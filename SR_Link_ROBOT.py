@@ -10,6 +10,8 @@ from database import add_shortened_link, get_user_links_count
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+BOT_NAME = "link_shortener"
+
 
 def shorten_url(long_url):
     """Сокращаем ссылку через clck.ru"""
@@ -84,7 +86,6 @@ async def callback_handler(update: Update, context):
 
 
 async def inline_query(update: Update, context):
-    query = update.effective_user.id
     link = update.inline_query.query
     
     if not is_valid_url(link):
@@ -115,12 +116,18 @@ async def inline_query(update: Update, context):
     await update.answer(results)
 
 
-def main():
-    app = Application.builder().token(BOTS["link_shortener"]).build()
+def register_handlers(app):
+    """Регистрация хендлеров"""
     app.add_handler(CommandHandler('start', start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(InlineQueryHandler(inline_query))
+
+
+def main():
+    """Для автономного запуска"""
+    app = Application.builder().token(BOTS[BOT_NAME]).build()
+    register_handlers(app)
     logger.info("Link Shortener bot запущен")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 

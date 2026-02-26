@@ -15,6 +15,7 @@ from database import (
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+BOT_NAME = "support"
 STATUSES = {"new": "Новый", "progress": "В обработке", "resolved": "Решено"}
 PRIORITIES = {"1": "Низкий", "2": "Средний", "3": "Высокий"}
 
@@ -74,7 +75,6 @@ async def set_priority(update: Update, context):
     
     await query.edit_message_text(f"Тикет #{ticket_id} создан! Приоритет: {priority} ✅")
     
-    # Уведомление админу
     admin_text = (
         f"🚨 Тикет #{ticket_id}\n"
         f"👤 {user.first_name} @{user.username} (ID: {user.id})\n"
@@ -169,9 +169,8 @@ async def cancel(update: Update, context):
     return ConversationHandler.END
 
 
-def main():
-    app = Application.builder().token(BOTS["support"]).build()
-    
+def register_handlers(app):
+    """Регистрация хендлеров"""
     conv = ConversationHandler(
         entry_points=[MessageHandler(filters.TEXT & ~filters.COMMAND, create_ticket_start)],
         states={
@@ -187,7 +186,12 @@ def main():
     app.add_handler(CallbackQueryHandler(ticket_callback, pattern=r"^(work|resolve|note)_"))
     app.add_handler(CallbackQueryHandler(list_tickets, pattern="^list_tickets"))
     app.add_handler(CallbackQueryHandler(show_stats, pattern="^show_stats"))
-    
+
+
+def main():
+    """Для автономного запуска"""
+    app = Application.builder().token(BOTS[BOT_NAME]).build()
+    register_handlers(app)
     logger.info("Support bot запущен")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 

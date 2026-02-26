@@ -9,6 +9,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 IMAGE_URL = "https://www.darkheavens.ru/17e6eda0db7a08ef104de6cade1fd77a.jpg"
+BOT_NAME = "corporate"
 
 KEYBOARD = [
     [InlineKeyboardButton("DH Learning 🐍🧠", url="https://t.me/DH_Learningbot")],
@@ -44,7 +45,6 @@ async def start(update: Update, context):
     user = update.effective_user
     name = user.first_name or user.username or "Пользователь"
     
-    # Сохраняем пользователя в БД
     add_corporate_user(user.id, user.username, user.first_name)
     
     message = f"👋 Привет, {name}!\n🤖 Я - бот Dark Heavens Corporate! 🌌\n\nВсе разработки ниже от @haker_one."
@@ -57,9 +57,15 @@ async def start(update: Update, context):
     )
 
 
-def main():
-    app = Application.builder().token(BOTS["corporate"]).build()
+def register_handlers(app):
+    """Регистрация хендлеров"""
     app.add_handler(CommandHandler('start', start))
+
+
+def main():
+    """Для автономного запуска"""
+    app = Application.builder().token(BOTS[BOT_NAME]).build()
+    register_handlers(app)
     logger.info("Corporate bot запущен")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 

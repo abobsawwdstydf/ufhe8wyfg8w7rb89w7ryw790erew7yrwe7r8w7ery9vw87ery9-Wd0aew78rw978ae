@@ -10,6 +10,8 @@ from database import add_uid_request, get_user_requests_count
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+BOT_NAME = "uid_info"
+
 
 async def start(update: Update, context):
     keyboard = InlineKeyboardMarkup([
@@ -43,11 +45,9 @@ async def handle_username(update: Update, context):
         return
     
     try:
-        # Получаем ID пользователя
         chat = await context.bot.get_chat(username)
         user_id = chat.id
         
-        # Сохраняем в БД
         add_uid_request(update.effective_user.id, username, user_id)
         
         await update.message.reply_text(
@@ -79,7 +79,6 @@ async def inline_query(update: Update, context):
         chat = await context.bot.get_chat(query)
         user_id = chat.id
         
-        # Сохраняем в БД
         add_uid_request(update.effective_user.id, query, user_id)
         
         results = [{
@@ -100,13 +99,17 @@ async def inline_query(update: Update, context):
         await update.answer(results)
 
 
-def main():
-    app = Application.builder().token(BOTS["uid_info"]).build()
-    
+def register_handlers(app):
+    """Регистрация хендлеров"""
     app.add_handler(CommandHandler('start', start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_username))
     app.add_handler(InlineQueryHandler(inline_query))
-    
+
+
+def main():
+    """Для автономного запуска"""
+    app = Application.builder().token(BOTS[BOT_NAME]).build()
+    register_handlers(app)
     logger.info("UID Info bot запущен")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 

@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
 Лаунчер для запуска всех ботов
-Запускает ботов по очереди с интервалом 1 секунда
+Запускает всех ботов асинхронно
 """
 import subprocess
 import sys
-import time
-import threading
+import asyncio
 import logging
 from database import init_db
 
@@ -32,18 +31,25 @@ def install_dependencies():
         sys.exit(1)
 
 
-def run_bot(name, module):
-    """Запускает бота в отдельном потоке"""
+async def run_bot(name, bot_module):
+    """Запускает бота асинхронно"""
+    logger.info(f"🚀 Запуск {name}...")
     try:
-        logger.info(f"🚀 Запуск {name}...")
-        module.main()
+        app = bot_module.Application.builder().token(bot_module.BOTS[bot_module.BOT_NAME]).build()
+        bot_module.register_handlers(app)
+        logger.info(f"✅ {name} запущен")
+        await app.run_polling(allowed_updates=bot_module.Update.ALL_TYPES)
     except Exception as e:
         logger.error(f"❌ Ошибка {name}: {e}")
 
 
-def main():
-    # Автоматическая установка зависимостей
-    install_dependencies()
+async def main_async():
+    """Асинхронный запуск всех ботов"""
+    # Импортируем модули ботов
+    import Dark_Heavens_Corporate_bot as corporate
+    import SR_Link_ROBOT as link_shortener
+    import support_bot as support
+    import uid_info_robot as uid_info
     
     # Инициализируем базу данных
     logger.info("📊 Инициализация базы данных...")
@@ -53,34 +59,23 @@ def main():
         logger.error(f"❌ Ошибка инициализации БД: {e}")
         return
     
-    # Импортируем модули ботов
-    import Dark_Heavens_Corporate_bot as corporate
-    import SR_Link_ROBOT as link_shortener
-    import support_bot as support
-    import uid_info_robot as uid_info
-    
-    bots = [
-        ("Corporate Bot", corporate),
-        ("Link Shortener Bot", link_shortener),
-        ("Support Bot", support),
-        ("UID Info Bot", uid_info),
+    # Запускаем всех ботов одновременно
+    tasks = [
+        run_bot("Corporate Bot", corporate),
+        run_bot("Link Shortener Bot", link_shortener),
+        run_bot("Support Bot", support),
+        run_bot("UID Info Bot", uid_info),
     ]
     
-    threads = []
+    await asyncio.gather(*tasks)
+
+
+def main():
+    # Автоматическая установка зависимостей
+    install_dependencies()
     
-    # Запускаем каждого бота с интервалом 1 секунда
-    for name, module in bots:
-        thread = threading.Thread(target=run_bot, args=(name, module), daemon=True)
-        thread.start()
-        threads.append(thread)
-        logger.info(f"✅ {name} запущен")
-        time.sleep(1)  # Интервал между запусками
-    
-    logger.info("🎉 Все боты запущены!")
-    
-    # Ждем завершения всех потоков
-    for thread in threads:
-        thread.join()
+    # Запускаем асинхронный цикл
+    asyncio.run(main_async())
 
 
 if __name__ == '__main__':
