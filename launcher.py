@@ -6,6 +6,8 @@ import subprocess
 import sys
 import asyncio
 import logging
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import Application
 from telegram.error import TimedOut, NetworkError
@@ -16,6 +18,18 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    """HTTP сервер для health checks"""
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'OK')
+    
+    def log_message(self, format, *args):
+        pass  # Отключаем логи HTTP
 
 
 def install_dependencies():
@@ -64,6 +78,14 @@ async def run_bot(name, token, register_func):
             raise
 
 
+async def run_health_server():
+    """Запускает HTTP сервер для health checks"""
+    port = int(os.environ.get('PORT', 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthHandler)
+    logger.info(f"🌐 Health server запущен на порту {port}")
+    await asyncio.get_event_loop().run_in_executor(None, server.serve_forever)
+
+
 async def main_async():
     """Асинхронный запуск всех ботов"""
     # Импортируем модули ботов
@@ -82,8 +104,9 @@ async def main_async():
         logger.error(f"❌ Ошибка инициализации БД: {e}")
         return
     
-    # Запускаем всех ботов одновременно
+    # Запускаем health server и ботов одновременно
     tasks = [
+        run_health_server(),
         run_bot("Corporate Bot", BOTS["corporate"], corporate.register_handlers),
         run_bot("Link Shortener Bot", BOTS["link_shortener"], link_shortener.register_handlers),
         run_bot("Support Bot", BOTS["support"], support.register_handlers),
