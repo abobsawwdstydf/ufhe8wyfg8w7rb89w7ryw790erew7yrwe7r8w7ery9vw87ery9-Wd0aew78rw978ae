@@ -8,6 +8,7 @@ import asyncio
 import logging
 from telegram import Update
 from telegram.ext import Application
+from telegram.error import TimedOut, NetworkError
 from database import init_db
 
 logging.basicConfig(
@@ -33,23 +34,34 @@ def install_dependencies():
 
 
 async def run_bot(name, token, register_func):
-    """Запускает бота"""
-    logger.info(f"🚀 Запуск {name}...")
-    try:
-        app = Application.builder().token(token).build()
-        register_func(app)
-        
-        # Инициализируем и запускаем polling
-        await app.initialize()
-        await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-        logger.info(f"✅ {name} запущен")
-        
-        # Держим бота запущенным
-        while True:
-            await asyncio.sleep(1)
-    except Exception as e:
-        logger.error(f"❌ Ошибка {name}: {e}")
-        raise
+    """Запускает бота с перезапуском при ошибках сети"""
+    retry_count = 0
+    max_retries = 10
+    
+    while retry_count < max_retries:
+        try:
+            logger.info(f"🚀 Запуск {name} (попытка {retry_count + 1})...")
+            
+            app = Application.builder().token(token).build()
+            register_func(app)
+            
+            # Инициализируем и запускаем polling
+            await app.initialize()
+            await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+            
+            logger.info(f"✅ {name} запущен")
+            
+            # Держим бота запущенным
+            while True:
+                await asyncio.sleep(1)
+                
+        except (TimedOut, NetworkError) as e:
+            retry_count += 1
+            logger.warning(f"⚠️ {name}: ошибка сети ({e}), перезапуск через 5 сек...")
+            await asyncio.sleep(5)
+        except Exception as e:
+            logger.error(f"❌ Ошибка {name}: {e}")
+            raise
 
 
 async def main_async():
@@ -79,11 +91,7 @@ async def main_async():
     ]
     
     logger.info("🎉 Запуск всех ботов...")
-    try:
-        await asyncio.gather(*tasks)
-    except Exception as e:
-        logger.error(f"❌ Критическая ошибка: {e}")
-        raise
+    await asyncio.gather(*tasks)
 
 
 def main():
