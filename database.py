@@ -1,12 +1,11 @@
 """Общий модуль для работы с базой данных Neon"""
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
 from config import DATABASE_URL
 
 
 def get_connection():
     """Получить соединение с БД"""
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg.connect(DATABASE_URL)
 
 
 def init_db():
@@ -181,7 +180,7 @@ def resolve_ticket(ticket_id):
 
 def get_ticket(ticket_id):
     conn = get_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor(row_factory=psycopg.rows.dict_row)
     cur.execute("SELECT * FROM support_tickets WHERE ticket_id = %s", (ticket_id,))
     ticket = cur.fetchone()
     cur.close()
@@ -201,7 +200,7 @@ def get_next_ticket_id():
 
 def get_all_tickets():
     conn = get_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor(row_factory=psycopg.rows.dict_row)
     cur.execute("SELECT * FROM support_tickets ORDER BY created_at DESC")
     tickets = cur.fetchall()
     cur.close()
